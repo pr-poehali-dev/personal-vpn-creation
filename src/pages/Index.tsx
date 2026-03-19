@@ -1,14 +1,425 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState, useEffect } from "react";
+import Icon from "@/components/ui/icon";
+type LucideIconName = string;
 
-const Index = () => {
+const peers = [
+  { id: 1, name: "MacBook Pro", ip: "10.8.0.2", endpoint: "192.168.1.45:51820", status: "active", rx: "2.4 GB", tx: "890 MB", ping: "12ms", lastSeen: "сейчас", os: "macOS" },
+  { id: 2, name: "iPhone 15", ip: "10.8.0.3", endpoint: "212.109.45.67:51820", status: "active", rx: "1.1 GB", tx: "340 MB", ping: "28ms", lastSeen: "сейчас", os: "iOS" },
+  { id: 3, name: "Ubuntu Server", ip: "10.8.0.4", endpoint: "77.234.12.8:51820", status: "inactive", rx: "5.7 GB", tx: "2.1 GB", ping: "—", lastSeen: "3 ч назад", os: "Linux" },
+  { id: 4, name: "Windows PC", ip: "10.8.0.5", endpoint: "89.45.123.201:51820", status: "inactive", rx: "890 MB", tx: "210 MB", ping: "—", lastSeen: "1 д назад", os: "Windows" },
+];
+
+const trafficData = [
+  { hour: "00", rx: 12, tx: 5 },
+  { hour: "03", rx: 8, tx: 3 },
+  { hour: "06", rx: 15, tx: 7 },
+  { hour: "09", rx: 45, tx: 22 },
+  { hour: "12", rx: 78, tx: 41 },
+  { hour: "15", rx: 92, tx: 55 },
+  { hour: "18", rx: 110, tx: 68 },
+  { hour: "21", rx: 85, tx: 44 },
+  { hour: "24", rx: 34, tx: 18 },
+];
+
+const maxVal = Math.max(...trafficData.map(d => d.rx));
+
+const osIcon = (os: string) => {
+  const map: Record<string, string> = { macOS: "Laptop", iOS: "Smartphone", Linux: "Terminal", Windows: "Monitor" };
+  return map[os] || "Cpu";
+};
+
+export default function Index() {
+  const [activeTab, setActiveTab] = useState<"peers" | "stats" | "config">("peers");
+  const [serverRunning, setServerRunning] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  const [hoveredPeer, setHoveredPeer] = useState<number | null>(null);
+
+  useEffect(() => {
+    setTimeout(() => setMounted(true), 100);
+  }, []);
+
+  const activePeers = peers.filter(p => p.status === "active").length;
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4 color-black text-black">Добро пожаловать!</h1>
-        <p className="text-xl text-gray-600">тут будет отображаться ваш проект</p>
+    <div className="min-h-screen bg-grid" style={{ background: "#080c14", fontFamily: "'Golos Text', sans-serif" }}>
+      {/* Background ambient */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full opacity-[0.06]"
+          style={{ background: "radial-gradient(circle, #00ffaa 0%, transparent 70%)", filter: "blur(60px)" }} />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full opacity-[0.05]"
+          style={{ background: "radial-gradient(circle, #00d4ff 0%, transparent 70%)", filter: "blur(60px)" }} />
+      </div>
+
+      <div className="relative z-10 max-w-6xl mx-auto px-6 py-8">
+
+        {/* Header */}
+        <div className={`flex items-center justify-between mb-8 transition-all duration-700 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"}`}>
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center animate-glow-pulse"
+                style={{ background: "linear-gradient(135deg, rgba(0,255,170,0.15) 0%, rgba(0,212,255,0.08) 100%)", border: "1px solid rgba(0,255,170,0.3)" }}>
+                <Icon name="Shield" size={22} className="neon-text" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full" style={{ background: serverRunning ? "#00ffaa" : "#444", boxShadow: serverRunning ? "0 0 8px #00ffaa" : "none" }} />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight" style={{ color: "#e8f8f5", fontFamily: "'Golos Text', sans-serif" }}>
+                WireGuard <span className="neon-text">VPN</span>
+              </h1>
+              <p className="text-xs" style={{ color: "#4a7a6a", fontFamily: "'JetBrains Mono', monospace" }}>
+                10.8.0.1 · 51820/UDP
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="glass rounded-xl px-4 py-2 flex items-center gap-2">
+              <div className={serverRunning ? "status-dot-active" : "status-dot-inactive"} />
+              <span className="text-sm font-medium" style={{ color: serverRunning ? "#00ffaa" : "#666" }}>
+                {serverRunning ? "Активен" : "Остановлен"}
+              </span>
+            </div>
+            <button
+              onClick={() => setServerRunning(!serverRunning)}
+              className="rounded-xl px-5 py-2 text-sm font-semibold transition-all duration-300"
+              style={{
+                background: serverRunning ? "rgba(220,50,50,0.12)" : "rgba(0,255,170,0.12)",
+                border: serverRunning ? "1px solid rgba(220,50,50,0.3)" : "1px solid rgba(0,255,170,0.3)",
+                color: serverRunning ? "#ff6b6b" : "#00ffaa",
+              }}
+            >
+              {serverRunning ? "Остановить" : "Запустить"}
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Row */}
+        <div className={`grid grid-cols-4 gap-4 mb-6 transition-all duration-700 delay-100 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+          {[
+            { label: "Пиры активны", value: `${activePeers}/${peers.length}`, icon: "Users", color: "#00ffaa" },
+            { label: "Трафик ↓", value: "10.1 GB", icon: "Download", color: "#00d4ff" },
+            { label: "Трафик ↑", value: "3.6 GB", icon: "Upload", color: "#a855f7" },
+            { label: "Аптайм", value: "14д 6ч", icon: "Clock", color: "#f59e0b" },
+          ].map((stat, i) => (
+            <div key={i} className="glass glass-hover rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Icon name={stat.icon as LucideIconName} size={14} style={{ color: stat.color }} />
+                <span className="text-xs" style={{ color: "#4a7a6a" }}>{stat.label}</span>
+              </div>
+              <p className="text-2xl font-bold" style={{ color: stat.color, textShadow: `0 0 20px ${stat.color}40` }}>
+                {stat.value}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Tabs */}
+        <div className={`flex gap-1 mb-6 glass rounded-2xl p-1 w-fit transition-all duration-700 delay-150 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+          {([
+            { key: "peers", label: "Подключения", icon: "Network" },
+            { key: "stats", label: "Статистика", icon: "BarChart3" },
+            { key: "config", label: "Конфигурация", icon: "Settings2" },
+          ] as const).map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300"
+              style={{
+                background: activeTab === tab.key ? "rgba(0,255,170,0.12)" : "transparent",
+                color: activeTab === tab.key ? "#00ffaa" : "#4a7a6a",
+                border: activeTab === tab.key ? "1px solid rgba(0,255,170,0.25)" : "1px solid transparent",
+                boxShadow: activeTab === tab.key ? "0 0 20px rgba(0,255,170,0.08)" : "none",
+              }}
+            >
+              <Icon name={tab.icon as LucideIconName} size={15} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Peers Tab */}
+        {activeTab === "peers" && (
+          <div className="animate-fade-in space-y-3">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold" style={{ color: "#c8e8e0" }}>Список пиров</h2>
+              <button className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-300"
+                style={{ background: "rgba(0,255,170,0.1)", border: "1px solid rgba(0,255,170,0.25)", color: "#00ffaa" }}>
+                <Icon name="Plus" size={14} />
+                Добавить пир
+              </button>
+            </div>
+
+            {peers.map((peer, i) => (
+              <div
+                key={peer.id}
+                className="glass glass-hover rounded-2xl p-5 cursor-pointer transition-all duration-300"
+                style={{
+                  animationDelay: `${i * 60}ms`,
+                  transform: hoveredPeer === peer.id ? "translateX(4px)" : "translateX(0)",
+                }}
+                onMouseEnter={() => setHoveredPeer(peer.id)}
+                onMouseLeave={() => setHoveredPeer(null)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                      style={{
+                        background: peer.status === "active" ? "rgba(0,255,170,0.08)" : "rgba(255,255,255,0.04)",
+                        border: `1px solid ${peer.status === "active" ? "rgba(0,255,170,0.2)" : "rgba(255,255,255,0.08)"}`,
+                      }}>
+                      <Icon name={osIcon(peer.os) as LucideIconName} size={16}
+                        style={{ color: peer.status === "active" ? "#00ffaa" : "#445566" }} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold" style={{ color: "#d8f0e8" }}>{peer.name}</p>
+                        <div className={peer.status === "active" ? "status-dot-active" : "status-dot-inactive"} />
+                      </div>
+                      <p className="text-xs mt-0.5" style={{ color: "#3a6a5a", fontFamily: "'JetBrains Mono', monospace" }}>
+                        {peer.ip} · {peer.endpoint}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-8">
+                    <div className="text-right">
+                      <p className="text-xs" style={{ color: "#3a6a5a" }}>Получено</p>
+                      <p className="text-sm font-medium" style={{ color: "#00d4ff" }}>{peer.rx}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs" style={{ color: "#3a6a5a" }}>Отправлено</p>
+                      <p className="text-sm font-medium" style={{ color: "#a855f7" }}>{peer.tx}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs" style={{ color: "#3a6a5a" }}>Пинг</p>
+                      <p className="text-sm font-medium" style={{ color: peer.status === "active" ? "#00ffaa" : "#445566" }}>{peer.ping}</p>
+                    </div>
+                    <div className="text-right hidden lg:block">
+                      <p className="text-xs" style={{ color: "#3a6a5a" }}>Последний раз</p>
+                      <p className="text-sm" style={{ color: "#5a8a7a" }}>{peer.lastSeen}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-110"
+                        style={{ background: "rgba(0,212,255,0.08)", border: "1px solid rgba(0,212,255,0.15)", color: "#00d4ff" }}>
+                        <Icon name="QrCode" size={13} />
+                      </button>
+                      <button className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-110"
+                        style={{ background: "rgba(255,100,100,0.08)", border: "1px solid rgba(255,100,100,0.15)", color: "#ff6b6b" }}>
+                        <Icon name="Trash2" size={13} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Stats Tab */}
+        {activeTab === "stats" && (
+          <div className="animate-fade-in space-y-5">
+            <h2 className="font-semibold mb-4" style={{ color: "#c8e8e0" }}>Статистика трафика</h2>
+
+            <div className="glass rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <p className="font-medium" style={{ color: "#c8e8e0" }}>Трафик за 24 часа</p>
+                  <p className="text-xs mt-1" style={{ color: "#3a6a5a" }}>Входящий и исходящий</p>
+                </div>
+                <div className="flex gap-4 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-0.5 rounded" style={{ background: "#00d4ff" }} />
+                    <span style={{ color: "#4a7a6a" }}>Получено</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-0.5 rounded" style={{ background: "#a855f7" }} />
+                    <span style={{ color: "#4a7a6a" }}>Отправлено</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-end gap-2 h-40">
+                {trafficData.map((d, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
+                    <div className="w-full flex gap-0.5 items-end" style={{ height: "120px" }}>
+                      <div className="flex-1 rounded-t-sm transition-all duration-500"
+                        style={{
+                          height: `${(d.rx / maxVal) * 100}%`,
+                          background: "linear-gradient(180deg, #00d4ff 0%, rgba(0,212,255,0.2) 100%)",
+                          opacity: 0.7,
+                          minHeight: "3px",
+                        }} />
+                      <div className="flex-1 rounded-t-sm transition-all duration-500"
+                        style={{
+                          height: `${(d.tx / maxVal) * 100}%`,
+                          background: "linear-gradient(180deg, #a855f7 0%, rgba(168,85,247,0.2) 100%)",
+                          opacity: 0.7,
+                          minHeight: "3px",
+                        }} />
+                    </div>
+                    <span className="text-xs" style={{ color: "#2a5a4a", fontFamily: "'JetBrains Mono', monospace" }}>{d.hour}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-5">
+              <div className="glass rounded-2xl p-5">
+                <p className="font-medium mb-4" style={{ color: "#c8e8e0" }}>Текущая скорость</p>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span style={{ color: "#4a7a6a" }}>Загрузка</span>
+                      <span style={{ color: "#00d4ff", fontFamily: "'JetBrains Mono', monospace" }}>42.8 MB/s</span>
+                    </div>
+                    <div className="h-2 rounded-full" style={{ background: "rgba(0,212,255,0.1)" }}>
+                      <div className="h-full rounded-full"
+                        style={{ width: "68%", background: "linear-gradient(90deg, #00d4ff, rgba(0,212,255,0.5))", boxShadow: "0 0 10px rgba(0,212,255,0.4)" }} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span style={{ color: "#4a7a6a" }}>Отдача</span>
+                      <span style={{ color: "#a855f7", fontFamily: "'JetBrains Mono', monospace" }}>18.3 MB/s</span>
+                    </div>
+                    <div className="h-2 rounded-full" style={{ background: "rgba(168,85,247,0.1)" }}>
+                      <div className="h-full rounded-full"
+                        style={{ width: "29%", background: "linear-gradient(90deg, #a855f7, rgba(168,85,247,0.5))", boxShadow: "0 0 10px rgba(168,85,247,0.4)" }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="glass rounded-2xl p-5">
+                <p className="font-medium mb-4" style={{ color: "#c8e8e0" }}>Топ пиров по трафику</p>
+                <div className="space-y-3">
+                  {peers.slice(0, 3).map((peer, i) => (
+                    <div key={peer.id} className="flex items-center gap-3">
+                      <span className="text-xs w-4" style={{ color: "#2a5a4a", fontFamily: "'JetBrains Mono', monospace" }}>#{i + 1}</span>
+                      <div className="flex-1">
+                        <div className="flex justify-between text-xs mb-1">
+                          <span style={{ color: "#8ab8a8" }}>{peer.name}</span>
+                          <span style={{ color: "#00ffaa", fontFamily: "'JetBrains Mono', monospace" }}>{peer.rx}</span>
+                        </div>
+                        <div className="h-1 rounded-full" style={{ background: "rgba(0,255,170,0.08)" }}>
+                          <div className="h-full rounded-full"
+                            style={{ width: `${100 - i * 30}%`, background: `rgba(0,255,170,${0.6 - i * 0.15})` }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Config Tab */}
+        {activeTab === "config" && (
+          <div className="animate-fade-in">
+            <h2 className="font-semibold mb-4" style={{ color: "#c8e8e0" }}>Конфигурация сервера</h2>
+            <div className="grid grid-cols-2 gap-5">
+
+              <div className="glass rounded-2xl p-5 col-span-2">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="font-medium" style={{ color: "#c8e8e0" }}>Конфигурационный файл</p>
+                  <div className="flex gap-2">
+                    <button className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium"
+                      style={{ background: "rgba(0,212,255,0.1)", border: "1px solid rgba(0,212,255,0.2)", color: "#00d4ff" }}>
+                      <Icon name="Copy" size={12} /> Копировать
+                    </button>
+                    <button className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium"
+                      style={{ background: "rgba(0,255,170,0.1)", border: "1px solid rgba(0,255,170,0.2)", color: "#00ffaa" }}>
+                      <Icon name="Download" size={12} /> Скачать
+                    </button>
+                  </div>
+                </div>
+                <pre className="text-sm leading-relaxed rounded-xl p-4"
+                  style={{
+                    background: "rgba(0,0,0,0.4)",
+                    border: "1px solid rgba(0,255,170,0.08)",
+                    color: "#4aff99",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "12px",
+                    overflowX: "auto",
+                  }}>
+{`[Interface]
+Address = 10.8.0.1/24
+ListenPort = 51820
+PrivateKey = ************************************
+
+PostUp = iptables -A FORWARD -i wg0 -j ACCEPT
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT
+
+[Peer] # MacBook Pro
+PublicKey = r4yBv5HkKg3Ui8c2XnJ...
+AllowedIPs = 10.8.0.2/32
+
+[Peer] # iPhone 15
+PublicKey = Kf8mN2pQsT1vWxYz...
+AllowedIPs = 10.8.0.3/32`}
+                </pre>
+              </div>
+
+              <div className="glass rounded-2xl p-5">
+                <p className="font-medium mb-4" style={{ color: "#c8e8e0" }}>Безопасность</p>
+                <div className="space-y-3">
+                  {[
+                    { label: "Шифрование", value: "ChaCha20-Poly1305", icon: "Lock" },
+                    { label: "Обмен ключами", value: "Curve25519", icon: "Key" },
+                    { label: "Хэширование", value: "BLAKE2s", icon: "Fingerprint" },
+                    { label: "Handshake", value: "Noise_IKpsk2", icon: "Handshake" },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center justify-between py-2"
+                      style={{ borderBottom: "1px solid rgba(0,255,170,0.05)" }}>
+                      <div className="flex items-center gap-2">
+                        <Icon name={item.icon as LucideIconName} size={13} style={{ color: "#00ffaa" }} />
+                        <span className="text-sm" style={{ color: "#4a7a6a" }}>{item.label}</span>
+                      </div>
+                      <span className="text-xs font-medium" style={{ color: "#8ab8a8", fontFamily: "'JetBrains Mono', monospace" }}>
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="glass rounded-2xl p-5">
+                <p className="font-medium mb-4" style={{ color: "#c8e8e0" }}>Сеть</p>
+                <div className="space-y-3">
+                  {[
+                    { label: "Интерфейс", value: "wg0" },
+                    { label: "Подсеть", value: "10.8.0.0/24" },
+                    { label: "Порт", value: "51820/UDP" },
+                    { label: "DNS", value: "1.1.1.1, 8.8.8.8" },
+                    { label: "MTU", value: "1420" },
+                    { label: "Keepalive", value: "25 сек" },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center justify-between py-2"
+                      style={{ borderBottom: "1px solid rgba(0,255,170,0.05)" }}>
+                      <span className="text-sm" style={{ color: "#4a7a6a" }}>{item.label}</span>
+                      <span className="text-xs font-medium" style={{ color: "#8ab8a8", fontFamily: "'JetBrains Mono', monospace" }}>
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className={`mt-8 flex items-center justify-between transition-all duration-700 delay-300 ${mounted ? "opacity-100" : "opacity-0"}`}>
+          <p className="text-xs" style={{ color: "#2a4a3a", fontFamily: "'JetBrains Mono', monospace" }}>
+            WireGuard® v1.0.0 · kernel mod
+          </p>
+          <div className="flex items-center gap-1.5">
+            <div className="status-dot-active" />
+            <p className="text-xs" style={{ color: "#2a4a3a" }}>Все системы работают</p>
+          </div>
+        </div>
       </div>
     </div>
   );
-};
-
-export default Index;
+}
